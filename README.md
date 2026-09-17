@@ -26,10 +26,11 @@ Actively being built out. Current native-engine and app-shell functionality:
 - Per-extension breakdown panel
 - Cleanup actions (reveal in Finder, open, move to Trash, delete permanently)
   with a Full Disk Access onboarding banner
+- English/Spanish UI language toggle (Settings)
 
 Not yet implemented: duplicate file finder, sunburst/flame graph views,
-permissions viewer, file search, CSV import/export, localization, code signing
-and notarization for distribution outside this development environment.
+permissions viewer, file search, CSV import/export, code signing and
+notarization for distribution outside this development environment.
 
 ## Building
 
@@ -40,6 +41,23 @@ swift build            # build
 swift run               # run the app
 swift test --package-path Packages/DirStatCore   # run the core engine's unit tests
 ```
+
+## Packaging a .dmg
+
+```bash
+./Packaging/build_dmg.sh
+```
+
+Builds a release binary, assembles it into `WinDirStatMac.app` (with the
+app icon and `Info.plist` in `Packaging/`), ad-hoc signs it, and produces
+`Packaging/dist/WinDirStatMac.dmg`. This is enough to run and share
+informally — macOS Gatekeeper will still show an "unidentified developer"
+warning on first launch (right-click > Open to bypass it), since ad-hoc
+signing isn't the same as signing with a paid Apple Developer ID
+certificate. Real distribution without that warning needs an Apple
+Developer Program membership, a Developer ID Application certificate to
+sign with, and notarizing the signed build with `notarytool` before
+stapling the ticket to the `.dmg` — not done here.
 
 ## License
 
