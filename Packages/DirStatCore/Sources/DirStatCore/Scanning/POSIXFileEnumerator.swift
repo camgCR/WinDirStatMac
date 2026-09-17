@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import Darwin
 
 /// One entry read from a directory, already `fstatat`'d with `AT_SYMLINK_NOFOLLOW`.

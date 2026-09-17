@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// Interns extension strings (lowercased, without the leading dot) to `ExtensionID`s.
 /// Not thread-safe by itself — callers scanning concurrently intern into their own
 /// local `ExtensionTable` and the IDs get remapped when merged into the shared tree

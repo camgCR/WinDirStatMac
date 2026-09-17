@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
 
 /// Builds a real temp directory tree for the scanner to walk, and removes it when
@@ -40,6 +41,15 @@ final class TempDirectoryFixture {
         try! FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let targetURL = rootURL.appendingPathComponent(targetRelativePath)
         try! FileManager.default.createSymbolicLink(at: url, withDestinationURL: targetURL)
+        return url
+    }
+
+    @discardableResult
+    func makeHardLink(_ relativePath: String, to targetRelativePath: String) -> URL {
+        let url = rootURL.appendingPathComponent(relativePath, isDirectory: false)
+        try! FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let targetURL = rootURL.appendingPathComponent(targetRelativePath)
+        try! FileManager.default.linkItem(at: targetURL, to: url)
         return url
     }
 

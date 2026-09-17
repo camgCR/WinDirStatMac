@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import AppKit
 
 /// Draws a thin horizontal bar filled proportionally to `fraction` (0...1),

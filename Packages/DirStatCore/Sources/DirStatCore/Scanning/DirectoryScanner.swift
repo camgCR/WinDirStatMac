@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import Darwin
 
 /// Caps how many directory-scan tasks may run concurrently, so a wide directory
@@ -52,8 +53,12 @@ public struct DirectoryScanner: Sendable {
             return tree
         }
 
+        var rootStat = stat()
+        let rootDevice: dev_t = fstat(rootFD, &rootStat) == 0 ? rootStat.st_dev : 0
+
         let budget = ConcurrencyBudget(limit: options.maxConcurrency)
-        let result = await scanDirectoryContents(fd: rootFD, path: rootPath, budget: budget, progress: progress)
+        let inodeRegistry = InodeRegistry()
+        let result = await scanDirectoryContents(fd: rootFD, path: rootPath, rootDevice: rootDevice, inodeRegistry: inodeRegistry, budget: budget, progress: progress)
         await tree.mergeChildren(into: rootID, result: result)
         await tree.recordDeniedPaths(result.deniedPaths)
         await tree.finalizeAggregation()
@@ -72,7 +77,7 @@ public struct DirectoryScanner: Sendable {
     /// Scans the contents of an already-open directory fd (takes ownership of it).
     /// Recurses into subdirectories, fanning out into child tasks while `budget`
     /// allows and falling back to inline recursion once it's exhausted.
-    private func scanDirectoryContents(fd: Int32, path: String, budget: ConcurrencyBudget, progress: ScanProgressCounter?) async -> LocalScanResult {
+    private func scanDirectoryContents(fd: Int32, path: String, rootDevice: dev_t, inodeRegistry: InodeRegistry, budget: ConcurrencyBudget, progress: ScanProgressCounter?) async -> LocalScanResult {
         guard !Task.isCancelled else {
             close(fd)
             return LocalScanResult()
@@ -83,11 +88,28 @@ public struct DirectoryScanner: Sendable {
         var directLeafCount = 0
         var directLeafBytes: Int64 = 0
 
-        for entry in entries where !entry.isDirectory {
+        // Hard-linked files (st_nlink > 1 — common on macOS system volumes and
+        // especially Xcode/CoreSimulator installs) point at the same on-disk
+        // bytes from multiple paths; counting each link's full size would report
+        // more bytes than the volume actually holds. Resolved as one batched
+        // actor call per directory rather than one per linked file.
+        let leafEntries = entries.filter { !$0.isDirectory }
+        let linkedIndices = leafEntries.indices.filter { leafEntries[$0].stat.st_nlink > 1 }
+        var isFirstOccurrence: [Int: Bool] = [:]
+        if !linkedIndices.isEmpty {
+            let keys = linkedIndices.map { (device: leafEntries[$0].stat.st_dev, inode: leafEntries[$0].stat.st_ino) }
+            let results = await inodeRegistry.claimFirstOccurrences(keys)
+            for (offset, index) in linkedIndices.enumerated() {
+                isFirstOccurrence[index] = results[offset]
+            }
+        }
+
+        for (index, entry) in leafEntries.enumerated() {
             let ext = entry.isSymlink ? nil : fileExtension(of: entry.name)
             let extensionID = ext.map { result.extensionTable.intern($0) } ?? .none
-            let sizeLogical = Int64(entry.stat.st_size)
-            let sizeAllocated = Int64(entry.stat.st_blocks) * 512
+            let alreadyCounted = isFirstOccurrence[index] == false
+            let sizeLogical = alreadyCounted ? 0 : Int64(entry.stat.st_size)
+            let sizeAllocated = alreadyCounted ? 0 : Int64(entry.stat.st_blocks) * 512
             result.addLeaf(name: entry.name, extensionID: extensionID, sizeLogical: sizeLogical, sizeAllocated: sizeAllocated, isSymlink: entry.isSymlink)
             directLeafCount += 1
             directLeafBytes += sizeLogical
@@ -96,6 +118,21 @@ public struct DirectoryScanner: Sendable {
         var inlineDirs: [RawDirEntry] = []
         var spawnedDirs: [RawDirEntry] = []
         for entry in entries where entry.isDirectory {
+            // Never cross into a different filesystem than the scan root: sibling
+            // APFS volumes in the same container share underlying free space, so
+            // recursing into every mount nested under the root (other volumes,
+            // disk images, network shares...) would double-count real disk usage
+            // rather than just reporting more of it. The mount point itself is
+            // still recorded, with its own shallow size, just not traversed.
+            guard entry.stat.st_dev == rootDevice else {
+                if let childFD = entry.childFD { close(childFD) }
+                result.addMountPoint(
+                    name: entry.name,
+                    sizeLogical: Int64(entry.stat.st_size),
+                    sizeAllocated: Int64(entry.stat.st_blocks) * 512
+                )
+                continue
+            }
             guard entry.childFD != nil else {
                 result.addPermissionDeniedDirectory(name: entry.name, path: "\(path)/\(entry.name)")
                 continue
@@ -114,7 +151,7 @@ public struct DirectoryScanner: Sendable {
                 let asPackage = options.treatPackagesAsFiles && isPackageName(name)
                 let childPath = "\(path)/\(name)"
                 group.addTask {
-                    let childResult = await self.scanDirectoryContents(fd: childFD, path: childPath, budget: budget, progress: progress)
+                    let childResult = await self.scanDirectoryContents(fd: childFD, path: childPath, rootDevice: rootDevice, inodeRegistry: inodeRegistry, budget: budget, progress: progress)
                     await budget.release()
                     return (name, asPackage, childResult)
                 }
@@ -126,7 +163,7 @@ public struct DirectoryScanner: Sendable {
 
         for entry in inlineDirs {
             let asPackage = options.treatPackagesAsFiles && isPackageName(entry.name)
-            let childResult = await scanDirectoryContents(fd: entry.childFD!, path: "\(path)/\(entry.name)", budget: budget, progress: progress)
+            let childResult = await scanDirectoryContents(fd: entry.childFD!, path: "\(path)/\(entry.name)", rootDevice: rootDevice, inodeRegistry: inodeRegistry, budget: budget, progress: progress)
             result.addDirectory(name: entry.name, childResult: childResult, asPackage: asPackage)
         }
 

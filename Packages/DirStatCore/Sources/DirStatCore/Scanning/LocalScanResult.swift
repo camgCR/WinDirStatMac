@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// Index into a `LocalScanResult`'s private arena — distinct from `NodeID` (which
 /// indexes the shared `FileSystemTree` arena) so the two can never be confused.
 struct LocalNodeID: Hashable, Sendable {
@@ -19,6 +20,7 @@ struct LocalNode: Sendable {
     var isPackage: Bool
     var isSymlink: Bool
     var permissionDenied: Bool
+    var isMountPoint: Bool
 }
 
 /// The result of scanning one directory's contents (not including a node for the
@@ -41,7 +43,7 @@ struct LocalScanResult: Sendable {
         nodes.append(LocalNode(
             parent: nil, children: [], name: name, extensionID: extensionID,
             sizeLogical: sizeLogical, sizeAllocated: sizeAllocated,
-            isDirectory: false, isPackage: false, isSymlink: isSymlink, permissionDenied: false
+            isDirectory: false, isPackage: false, isSymlink: isSymlink, permissionDenied: false, isMountPoint: false
         ))
         topLevelChildren.append(id)
         scannedFileCount += 1
@@ -54,10 +56,26 @@ struct LocalScanResult: Sendable {
         nodes.append(LocalNode(
             parent: nil, children: [], name: name, extensionID: .none,
             sizeLogical: 0, sizeAllocated: 0,
-            isDirectory: true, isPackage: false, isSymlink: false, permissionDenied: true
+            isDirectory: true, isPackage: false, isSymlink: false, permissionDenied: true, isMountPoint: false
         ))
         topLevelChildren.append(id)
         deniedPaths.append(path)
+    }
+
+    /// Records a directory that's a mount point for a different filesystem than
+    /// its parent, without descending into it — see `FileSystemNode.isMountPoint`
+    /// for why crossing it would corrupt the size totals.
+    mutating func addMountPoint(name: String, sizeLogical: Int64, sizeAllocated: Int64) {
+        let id = LocalNodeID(rawValue: Int32(nodes.count))
+        nodes.append(LocalNode(
+            parent: nil, children: [], name: name, extensionID: .none,
+            sizeLogical: sizeLogical, sizeAllocated: sizeAllocated,
+            isDirectory: true, isPackage: false, isSymlink: false, permissionDenied: false, isMountPoint: true
+        ))
+        topLevelChildren.append(id)
+        scannedFileCount += 1
+        totalLogical += sizeLogical
+        totalAllocated += sizeAllocated
     }
 
     /// Merges an already-scanned subdirectory's contents in as a new top-level
@@ -74,7 +92,7 @@ struct LocalScanResult: Sendable {
             nodes.append(LocalNode(
                 parent: nil, children: [], name: name, extensionID: .none,
                 sizeLogical: childResult.totalLogical, sizeAllocated: childResult.totalAllocated,
-                isDirectory: true, isPackage: true, isSymlink: false, permissionDenied: false
+                isDirectory: true, isPackage: true, isSymlink: false, permissionDenied: false, isMountPoint: false
             ))
             topLevelChildren.append(id)
             return
@@ -93,7 +111,7 @@ struct LocalScanResult: Sendable {
         nodes.append(LocalNode(
             parent: nil, children: [], name: name, extensionID: .none,
             sizeLogical: 0, sizeAllocated: 0,
-            isDirectory: true, isPackage: false, isSymlink: false, permissionDenied: false
+            isDirectory: true, isPackage: false, isSymlink: false, permissionDenied: false, isMountPoint: false
         ))
         let base = Int32(nodes.count)
 

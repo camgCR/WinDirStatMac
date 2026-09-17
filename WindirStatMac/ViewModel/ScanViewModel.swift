@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
 import Observation
 import DirStatCore
@@ -103,6 +104,11 @@ final class ScanViewModel {
 
     func extensionName(for id: ExtensionID) async -> String? {
         await tree?.extensionName(for: id)
+    }
+
+    func extensionNames(for ids: [ExtensionID]) async -> [ExtensionID: String] {
+        guard let tree else { return [:] }
+        return await tree.extensionNames(for: ids)
     }
 
     func setZoomRoot(_ id: NodeID) {

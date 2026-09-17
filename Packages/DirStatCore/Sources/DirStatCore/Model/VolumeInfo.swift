@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
 
 /// A mountable/scannable root, e.g. a volume or an arbitrary user-chosen folder.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 enum NodeSortComparator {
     /// Descending comparator by aggregate size in the given mode, for sorting a
     /// directory's children (largest first, matching the original app and Finder's

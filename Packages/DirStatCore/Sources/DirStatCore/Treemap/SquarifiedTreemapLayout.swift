@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// The "squarified" treemap layout algorithm (Bruls, Huizing, van Wijk, 2000),
 /// reimplemented fresh here — not ported from any existing codebase. Lays out a
 /// single directory level's children into tiles whose aspect ratios stay as close

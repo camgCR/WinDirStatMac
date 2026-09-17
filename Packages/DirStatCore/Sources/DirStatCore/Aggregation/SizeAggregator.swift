@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// Bottom-up rollup of directory sizes from their children. Pure and UI-free so it
 /// can be exercised directly against synthetic arenas in unit tests.
 ///

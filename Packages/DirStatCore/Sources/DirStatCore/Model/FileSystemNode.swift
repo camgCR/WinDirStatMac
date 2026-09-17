@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// Interned identifier for a file extension (or the "no extension" bucket), stable
 /// within a single `FileSystemTree`. Interning avoids storing/copying the extension
 /// string on every one of the (potentially 500k+) nodes.
@@ -42,6 +43,15 @@ public struct FileSystemNode: Sendable {
     /// Set when enumerating this node's contents failed with EACCES/EPERM.
     /// The node itself is still recorded; its subtree is simply empty.
     public var permissionDenied: Bool
+    /// Set when this directory is a mount point for a different filesystem than
+    /// its parent (a different volume, a disk image, a network share, an APFS
+    /// volume sharing the same container...). Scanning never crosses into it: on
+    /// APFS in particular, sibling volumes in the same container share the same
+    /// underlying free space, so descending into every mounted volume under `/`
+    /// would double- (or triple-, or...) count real disk usage. The node itself
+    /// is still recorded, with its own (typically tiny) mountpoint-directory size;
+    /// its subtree is simply never scanned.
+    public var isMountPoint: Bool
 
     /// Children sorted by `aggregateAllocated`/`aggregateLogical` descending, computed lazily
     /// and invalidated whenever children or the active size mode changes.
@@ -57,6 +67,7 @@ public struct FileSystemNode: Sendable {
         isPackage: Bool = false,
         isSymlink: Bool = false,
         permissionDenied: Bool = false,
+        isMountPoint: Bool = false,
         children: [NodeID] = []
     ) {
         self.parent = parent
@@ -71,6 +82,7 @@ public struct FileSystemNode: Sendable {
         self.isPackage = isPackage
         self.isSymlink = isSymlink
         self.permissionDenied = permissionDenied
+        self.isMountPoint = isMountPoint
         self.childrenSortedCache = nil
     }
 }

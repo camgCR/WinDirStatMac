@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// An item to be laid out by `SquarifiedTreemapLayout`. `weight` is whatever size
 /// metric drives tile area (aggregate logical or allocated size) — the algorithm
 /// itself is agnostic to what it represents.

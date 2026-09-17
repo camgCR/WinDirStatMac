@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -204,6 +205,9 @@ final class FileTreeCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineVie
     }
 
     private func icon(for node: FileSystemNode) -> NSImage? {
+        if node.isMountPoint {
+            return NSWorkspace.shared.icon(for: .volume)
+        }
         if node.isPackage {
             return NSWorkspace.shared.icon(for: .applicationBundle)
         }

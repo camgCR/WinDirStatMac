@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// How to rank nodes for display (tree list order, treemap tile order).
 public enum SizeMode: Sendable {
     case logical
@@ -38,6 +39,19 @@ public actor FileSystemTree {
         extensionTable.name(for: id)
     }
 
+    /// Batched lookup — one actor hop for many ids, instead of one per id. Useful
+    /// for callers (like the treemap layout) resolving names for a whole batch of
+    /// leaf tiles at once.
+    public func extensionNames(for ids: [ExtensionID]) -> [ExtensionID: String] {
+        var result: [ExtensionID: String] = [:]
+        for id in ids {
+            if let name = extensionTable.name(for: id) {
+                result[id] = name
+            }
+        }
+        return result
+    }
+
     /// Merges a locally-scanned directory's contents in as children of `parentID`,
     /// remapping the local arena's node indices and extension IDs into this tree's
     /// shared arena/extension table. Does not touch ancestor aggregates — call
@@ -65,6 +79,7 @@ public actor FileSystemTree {
                 isPackage: localNode.isPackage,
                 isSymlink: localNode.isSymlink,
                 permissionDenied: localNode.permissionDenied,
+                isMountPoint: localNode.isMountPoint,
                 children: localNode.children.map(remap)
             ))
         }

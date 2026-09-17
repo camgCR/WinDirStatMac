@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 public struct TreemapRect: Sendable, Equatable {
     public var x: Double
     public var y: Double

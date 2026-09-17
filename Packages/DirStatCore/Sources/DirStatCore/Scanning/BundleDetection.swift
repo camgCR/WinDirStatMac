@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// Fast, I/O-free package/bundle detection by extension. Deliberately not using
 /// `NSWorkspace.shared.isFilePackage(atPath:)` (which stats the directory and can
 /// consult its Info.plist) as the primary check — calling that across hundreds of

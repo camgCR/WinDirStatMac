@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import SwiftUI
 
 extension Notification.Name {
@@ -11,8 +12,12 @@ struct WindirStatMacApp: App {
     var body: some Scene {
         WindowGroup {
             MainWindowView(viewModel: viewModel)
-                .frame(minWidth: 640, minHeight: 420)
+                .frame(
+                    minWidth: 640, idealWidth: 900, maxWidth: .infinity,
+                    minHeight: 420, idealHeight: 600, maxHeight: .infinity
+                )
         }
+        .windowResizability(.contentMinSize)
         .defaultSize(width: 900, height: 600)
         .commands {
             CommandGroup(replacing: .newItem) {

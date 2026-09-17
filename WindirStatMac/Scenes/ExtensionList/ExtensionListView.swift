@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import SwiftUI
 import DirStatCore
 
@@ -31,20 +32,25 @@ struct ExtensionListView: View {
                         .lineLimit(1)
                 }
             }
+            .width(min: 70, ideal: 110)
             TableColumn("Archivos") { stat in
                 Text("\(stat.fileCount)")
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            .width(60)
+            .width(min: 40, ideal: 50, max: 64)
             TableColumn("Tamaño") { stat in
                 Text(ByteCountFormatter.string(fromByteCount: sizeValue(stat), countStyle: .file))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            .width(84)
+            .width(min: 56, ideal: 72, max: 90)
             TableColumn("%") { stat in
                 percentageBar(for: stat)
             }
-            .width(60)
+            .width(min: 32, ideal: 40, max: 52)
         }
         .task(id: viewModel.rootID) {
             stats = await viewModel.extensionStats()

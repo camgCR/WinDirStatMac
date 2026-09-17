@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /// Aggregates per-extension file counts/sizes across a scanned tree. Directories
 /// (including package/bundle leaf nodes, which carry no extension) are excluded —
 /// this reflects actual file extensions only, same as the tree list's file rows.

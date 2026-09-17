@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 public struct ScanProgress: Sendable, Equatable {
     public var filesScanned: Int
     public var bytesScanned: Int64

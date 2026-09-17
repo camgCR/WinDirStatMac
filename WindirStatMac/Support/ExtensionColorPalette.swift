@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import AppKit
 
 /// Assigns a stable color to each file extension, shared by the treemap and (from
@@ -24,6 +25,14 @@ enum ExtensionColorPalette {
     static let directoryColor = NSColor(white: 0.55, alpha: 1)
     static let packageColor = NSColor(red: 0.42, green: 0.47, blue: 0.82, alpha: 1)
     static let noExtensionColor = NSColor(white: 0.65, alpha: 1)
+    /// Dark reddish-brown, distinct from every other tile color, for locations the
+    /// scan couldn't read (almost always missing Full Disk Access) — so it reads
+    /// as "unknown / blocked" rather than looking like an ordinary empty folder.
+    static let permissionDeniedColor = NSColor(red: 0.45, green: 0.24, blue: 0.22, alpha: 1)
+    /// Dark teal for mount points (other volumes, disk images, network shares)
+    /// that the scan deliberately doesn't descend into — see
+    /// `FileSystemNode.isMountPoint`.
+    static let mountPointColor = NSColor(red: 0.16, green: 0.35, blue: 0.38, alpha: 1)
 
     static func color(forExtension name: String?) -> NSColor {
         guard let name, !name.isEmpty else { return noExtensionColor }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import AppKit
 import DirStatCore
 
@@ -117,6 +118,8 @@ final class TreemapNSView: NSView {
     }
 
     private func fillColor(for tile: TreemapTile) -> NSColor {
+        if tile.node.permissionDenied { return ExtensionColorPalette.permissionDeniedColor }
+        if tile.node.isMountPoint { return ExtensionColorPalette.mountPointColor }
         if tile.node.isPackage { return ExtensionColorPalette.packageColor }
         if tile.node.isDirectory { return ExtensionColorPalette.directoryColor }
         return ExtensionColorPalette.color(forExtension: tile.extensionName)
