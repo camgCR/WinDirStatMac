@@ -14,6 +14,10 @@ public actor FileSystemTree {
     private var nodes: [FileSystemNode] = []
     private var extensionTable = ExtensionTable()
     public private(set) var rootID: NodeID?
+    /// The scan root's own absolute filesystem path, as passed to
+    /// `DirectoryScanner.scan` — nodes only store their own `name`, so this is
+    /// what makes `fullPath(of:)` possible.
+    private var rootPath: String = ""
     /// Absolute paths the scan couldn't read into (EACCES/EPERM), typically because
     /// the app lacks Full Disk Access. Populated once by `DirectoryScanner.scan`.
     public private(set) var deniedPaths: [String] = []
@@ -21,12 +25,32 @@ public actor FileSystemTree {
     public init() {}
 
     /// Creates the tree's root node (typically the scanned volume or folder).
+    /// `rootPath` is the absolute filesystem path this root represents.
     @discardableResult
-    public func makeRoot(name: String) -> NodeID {
+    public func makeRoot(name: String, rootPath: String) -> NodeID {
         let id = NodeID(rawValue: Int32(nodes.count))
         nodes.append(FileSystemNode(parent: nil, name: name, isDirectory: true))
         rootID = id
+        self.rootPath = rootPath
         return id
+    }
+
+    /// Reconstructs `id`'s absolute filesystem path by walking parent pointers
+    /// up to the root, then prefixing the root's own scanned path.
+    public func fullPath(of id: NodeID) -> String? {
+        guard let rootID else { return nil }
+        if id == rootID { return rootPath }
+
+        var components: [String] = []
+        var current: NodeID? = id
+        while let currentID = current, currentID != rootID {
+            guard Int(currentID.rawValue) < nodes.count else { return nil }
+            let node = nodes[Int(currentID.rawValue)]
+            components.append(node.name)
+            current = node.parent
+        }
+        guard current == rootID else { return nil }
+        return rootPath + "/" + components.reversed().joined(separator: "/")
     }
 
     public func node(_ id: NodeID) -> FileSystemNode {
@@ -178,6 +202,30 @@ public actor FileSystemTree {
         for childID in node.children {
             appendRows(for: childID, parentPath: path, into: &rows)
         }
+    }
+
+    /// Files sharing an exact size with at least one other file — cheap,
+    /// in-memory grouping done here (inside the actor) so `DuplicateFinder` can
+    /// do the actual disk I/O (hashing) entirely outside it, without blocking
+    /// every other tree access for however long that takes. Directories,
+    /// symlinks, zero-byte files, and anything already removed via
+    /// `removeFromTree` are never candidates.
+    func duplicateCandidates() -> [DuplicateCandidate] {
+        var bySize: [Int64: [NodeID]] = [:]
+        for index in nodes.indices {
+            let node = nodes[index]
+            guard !node.isDirectory, !node.isDeleted, !node.isSymlink, node.sizeLogical > 0 else { continue }
+            bySize[node.sizeLogical, default: []].append(NodeID(rawValue: Int32(index)))
+        }
+
+        var candidates: [DuplicateCandidate] = []
+        for (size, ids) in bySize where ids.count >= 2 {
+            for id in ids {
+                guard let path = fullPath(of: id) else { continue }
+                candidates.append(DuplicateCandidate(id: id, path: path, size: size))
+            }
+        }
+        return candidates
     }
 
     private func entryType(for node: FileSystemNode) -> CSVEntryType {

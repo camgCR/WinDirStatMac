@@ -8,6 +8,7 @@ struct MainWindowView: View {
     var viewModel: ScanViewModel
     @State private var showInspector = true
     @State private var showSearch = false
+    @State private var showDuplicates = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,6 +67,14 @@ struct MainWindowView: View {
             }
             ToolbarItem {
                 Button {
+                    showDuplicates = true
+                } label: {
+                    Label(loc("Find Duplicates…"), systemImage: "doc.on.doc")
+                }
+                .disabled(viewModel.rootID == nil)
+            }
+            ToolbarItem {
+                Button {
                     showInspector.toggle()
                 } label: {
                     Label(loc("Extensions"), systemImage: "sidebar.right")
@@ -79,6 +88,9 @@ struct MainWindowView: View {
         .sheet(isPresented: $showSearch) {
             SearchView(viewModel: viewModel)
         }
+        .sheet(isPresented: $showDuplicates) {
+            DuplicateFinderView(viewModel: viewModel)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .openFolderRequested)) { _ in
             chooseFolder()
         }
@@ -87,6 +99,9 @@ struct MainWindowView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .exportCSVRequested)) { _ in
             if viewModel.rootID != nil { exportCSV() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .findDuplicatesRequested)) { _ in
+            if viewModel.rootID != nil { showDuplicates = true }
         }
     }
 

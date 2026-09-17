@@ -5,6 +5,7 @@ extension Notification.Name {
     static let openFolderRequested = Notification.Name("openFolderRequested")
     static let searchRequested = Notification.Name("searchRequested")
     static let exportCSVRequested = Notification.Name("exportCSVRequested")
+    static let findDuplicatesRequested = Notification.Name("findDuplicatesRequested")
 }
 
 @main
@@ -39,6 +40,10 @@ struct WinDirStatMacApp: App {
                     NotificationCenter.default.post(name: .exportCSVRequested, object: nil)
                 }
                 .keyboardShortcut("e", modifiers: .command)
+                Button(loc("Find Duplicates…")) {
+                    NotificationCenter.default.post(name: .findDuplicatesRequested, object: nil)
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
             }
         }
 

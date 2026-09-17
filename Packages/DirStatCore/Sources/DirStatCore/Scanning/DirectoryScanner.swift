@@ -45,7 +45,7 @@ public struct DirectoryScanner: Sendable {
     public func scan(rootPath: String, progress: ScanProgressCounter? = nil) async -> FileSystemTree {
         let tree = FileSystemTree()
         let rootName = displayName(forPath: rootPath)
-        let rootID = await tree.makeRoot(name: rootName)
+        let rootID = await tree.makeRoot(name: rootName, rootPath: rootPath)
 
         guard let rootFD = POSIXFileEnumerator.openDirectory(atPath: rootPath) else {
             await tree.recordDeniedPaths([rootPath])

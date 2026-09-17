@@ -43,7 +43,13 @@ struct SearchView: View {
             }
         }
         .frame(width: 560, height: 440)
-        .onAppear { fieldFocused = true }
+        .task {
+            // A sheet's content view often isn't key yet the instant `onAppear`
+            // fires, so requesting focus immediately is silently ignored —
+            // this one small delay is the standard workaround.
+            try? await Task.sleep(for: .milliseconds(50))
+            fieldFocused = true
+        }
         .task(id: query) {
             let currentQuery = query
             try? await Task.sleep(for: .milliseconds(200))

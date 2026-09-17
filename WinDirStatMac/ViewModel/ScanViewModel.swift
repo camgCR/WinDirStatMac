@@ -124,6 +124,11 @@ final class ScanViewModel {
         return CSVFormatter.format(rows: rows)
     }
 
+    func findDuplicates() async -> [DuplicateGroup] {
+        guard let tree else { return [] }
+        return await DuplicateFinder.findDuplicates(in: tree)
+    }
+
     func search(query: String) async -> [SearchResult] {
         guard let tree else { return [] }
         return await tree.search(query: query, sizeMode: sizeMode)
@@ -153,22 +158,8 @@ final class ScanViewModel {
         return chain.reversed()
     }
 
-    /// Reconstructs `id`'s absolute filesystem path by walking parent pointers up
-    /// to the scan root, then prefixing the root's own scanned path — nodes only
-    /// store their own `name`, not a full path.
     func fullPath(of id: NodeID) async -> String? {
-        guard let scannedPath, let rootID else { return nil }
-        if id == rootID { return scannedPath }
-
-        var components: [String] = []
-        var current: NodeID? = id
-        while let currentID = current, currentID != rootID {
-            guard let node = await self.node(currentID) else { return nil }
-            components.append(node.name)
-            current = node.parent
-        }
-        guard current == rootID else { return nil }
-        return scannedPath + "/" + components.reversed().joined(separator: "/")
+        await tree?.fullPath(of: id)
     }
 
     func revealInFinder(_ id: NodeID) async {

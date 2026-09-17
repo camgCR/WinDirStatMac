@@ -82,6 +82,15 @@ private let spanishTranslations: [String: String] = [
     "Search files and folders…": "Buscar archivos y carpetas…",
     "Search this scan": "Buscar en este escaneo",
     "Export CSV…": "Exportar CSV…",
+
+    // Duplicates
+    "Find Duplicates…": "Buscar duplicados…",
+    "Duplicate Files": "Archivos duplicados",
+    "Hashing files to find duplicates…": "Calculando hashes para encontrar duplicados…",
+    "No Duplicates Found": "No se encontraron duplicados",
+    "groups": "grupos",
+    "could free up": "podrías liberar",
+    "Done": "Listo",
 ]
 
 @MainActor
