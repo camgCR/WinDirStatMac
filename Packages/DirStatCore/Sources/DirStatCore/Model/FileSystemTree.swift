@@ -130,6 +130,7 @@ public actor FileSystemTree {
     public func removeFromTree(_ id: NodeID) -> NodeID? {
         guard Int(id.rawValue) < nodes.count, let parentID = nodes[Int(id.rawValue)].parent else { return nil }
         let removed = nodes[Int(id.rawValue)]
+        nodes[Int(id.rawValue)].isDeleted = true
 
         nodes[Int(parentID.rawValue)].children.removeAll { $0 == id }
         nodes[Int(parentID.rawValue)].childrenSortedCache?.removeAll { $0 == id }
@@ -141,5 +142,49 @@ public actor FileSystemTree {
             allocatedDelta: -removed.aggregateAllocated
         )
         return parentID
+    }
+
+    /// Case-insensitive substring search over every node's name, sorted
+    /// descending by size. Excludes anything already removed via
+    /// `removeFromTree`.
+    public func search(query: String, sizeMode: SizeMode) -> [SearchResult] {
+        SearchEngine.search(nodes: nodes, query: query, sizeMode: sizeMode)
+    }
+
+    /// Every node in the tree (excluding anything removed via `removeFromTree`)
+    /// as a flat list of `CSVRow`s, each carrying its path relative to the scan
+    /// root. Depth-first, so a directory's row always precedes its children's.
+    public func exportRows() -> [CSVRow] {
+        guard let rootID else { return [] }
+        var rows: [CSVRow] = []
+        appendRows(for: rootID, parentPath: "", into: &rows)
+        return rows
+    }
+
+    private func appendRows(for id: NodeID, parentPath: String, into rows: inout [CSVRow]) {
+        let node = nodes[Int(id.rawValue)]
+        guard !node.isDeleted else { return }
+
+        let path = parentPath.isEmpty ? node.name : parentPath + "/" + node.name
+        rows.append(CSVRow(
+            path: path,
+            name: node.name,
+            type: entryType(for: node),
+            sizeLogical: node.aggregateLogical,
+            sizeAllocated: node.aggregateAllocated,
+            extensionName: extensionTable.name(for: node.extensionID)
+        ))
+
+        for childID in node.children {
+            appendRows(for: childID, parentPath: path, into: &rows)
+        }
+    }
+
+    private func entryType(for node: FileSystemNode) -> CSVEntryType {
+        if node.permissionDenied { return .permissionDenied }
+        if node.isMountPoint { return .mountPoint }
+        if node.isPackage { return .package }
+        if node.isSymlink { return .symlink }
+        return node.isDirectory ? .directory : .file
     }
 }

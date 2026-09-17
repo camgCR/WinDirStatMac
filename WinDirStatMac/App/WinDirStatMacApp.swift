@@ -3,6 +3,8 @@ import SwiftUI
 
 extension Notification.Name {
     static let openFolderRequested = Notification.Name("openFolderRequested")
+    static let searchRequested = Notification.Name("searchRequested")
+    static let exportCSVRequested = Notification.Name("exportCSVRequested")
 }
 
 @main
@@ -25,6 +27,18 @@ struct WinDirStatMacApp: App {
                     NotificationCenter.default.post(name: .openFolderRequested, object: nil)
                 }
                 .keyboardShortcut("o", modifiers: .command)
+            }
+            CommandGroup(after: .textEditing) {
+                Button(loc("Search")) {
+                    NotificationCenter.default.post(name: .searchRequested, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: .command)
+            }
+            CommandGroup(after: .saveItem) {
+                Button(loc("Export CSV…")) {
+                    NotificationCenter.default.post(name: .exportCSVRequested, object: nil)
+                }
+                .keyboardShortcut("e", modifiers: .command)
             }
         }
 

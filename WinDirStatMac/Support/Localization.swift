@@ -76,6 +76,12 @@ private let spanishTranslations: [String: String] = [
         "%d ubicaciones no se pudieron leer. WinDirStatMac necesita Acceso completo al disco para verlas.",
     "Open System Settings": "Abrir Preferencias del Sistema",
     "Rescan": "Reescanear",
+
+    // Search
+    "Search": "Buscar",
+    "Search files and folders…": "Buscar archivos y carpetas…",
+    "Search this scan": "Buscar en este escaneo",
+    "Export CSV…": "Exportar CSV…",
 ]
 
 @MainActor

@@ -52,6 +52,11 @@ public struct FileSystemNode: Sendable {
     /// is still recorded, with its own (typically tiny) mountpoint-directory size;
     /// its subtree is simply never scanned.
     public var isMountPoint: Bool
+    /// Set by `FileSystemTree.removeFromTree` after the corresponding file was
+    /// actually deleted on disk. The node's arena slot is never reclaimed (other
+    /// `NodeID`s may still reference it as a `parent`), so anything that scans the
+    /// whole arena directly — search, duplicate detection — must skip these.
+    public var isDeleted: Bool
 
     /// Children sorted by `aggregateAllocated`/`aggregateLogical` descending, computed lazily
     /// and invalidated whenever children or the active size mode changes.
@@ -68,6 +73,7 @@ public struct FileSystemNode: Sendable {
         isSymlink: Bool = false,
         permissionDenied: Bool = false,
         isMountPoint: Bool = false,
+        isDeleted: Bool = false,
         children: [NodeID] = []
     ) {
         self.parent = parent
@@ -83,6 +89,7 @@ public struct FileSystemNode: Sendable {
         self.isSymlink = isSymlink
         self.permissionDenied = permissionDenied
         self.isMountPoint = isMountPoint
+        self.isDeleted = isDeleted
         self.childrenSortedCache = nil
     }
 }

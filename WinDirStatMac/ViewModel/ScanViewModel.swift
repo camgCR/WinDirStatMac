@@ -116,6 +116,29 @@ final class ScanViewModel {
         selectedNodeID = nil
     }
 
+    /// Renders the whole current scan as CSV text, or `nil` if nothing's been
+    /// scanned yet.
+    func exportCSV() async -> String? {
+        guard let tree else { return nil }
+        let rows = await tree.exportRows()
+        return CSVFormatter.format(rows: rows)
+    }
+
+    func search(query: String) async -> [SearchResult] {
+        guard let tree else { return [] }
+        return await tree.search(query: query, sizeMode: sizeMode)
+    }
+
+    /// Zooms to the result's containing folder and selects it there — the
+    /// result becomes a top-level, already-visible item under the new zoom
+    /// root in both the tree list and the treemap, without needing to expand
+    /// every ancestor along the way first.
+    func revealSearchResult(_ result: SearchResult) async {
+        guard let node = await node(result.id), let parentID = node.parent else { return }
+        setZoomRoot(parentID)
+        selectedNodeID = result.id
+    }
+
     /// The chain of directory names from the scan root down to the current zoom
     /// root, for a breadcrumb control (`[(id, name)]`, root first).
     func breadcrumbPath() async -> [(id: NodeID, name: String)] {

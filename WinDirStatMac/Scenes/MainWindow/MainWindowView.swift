@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 import DirStatCore
 
 struct MainWindowView: View {
     var viewModel: ScanViewModel
     @State private var showInspector = true
+    @State private var showSearch = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,6 +50,22 @@ struct MainWindowView: View {
             }
             ToolbarItem {
                 Button {
+                    showSearch = true
+                } label: {
+                    Label(loc("Search"), systemImage: "magnifyingglass")
+                }
+                .disabled(viewModel.rootID == nil)
+            }
+            ToolbarItem {
+                Button {
+                    exportCSV()
+                } label: {
+                    Label(loc("Export CSV…"), systemImage: "square.and.arrow.up")
+                }
+                .disabled(viewModel.rootID == nil)
+            }
+            ToolbarItem {
+                Button {
                     showInspector.toggle()
                 } label: {
                     Label(loc("Extensions"), systemImage: "sidebar.right")
@@ -58,8 +76,17 @@ struct MainWindowView: View {
             ExtensionListView(viewModel: viewModel)
                 .inspectorColumnWidth(min: 220, ideal: 260, max: 360)
         }
+        .sheet(isPresented: $showSearch) {
+            SearchView(viewModel: viewModel)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .openFolderRequested)) { _ in
             chooseFolder()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .searchRequested)) { _ in
+            if viewModel.rootID != nil { showSearch = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .exportCSVRequested)) { _ in
+            if viewModel.rootID != nil { exportCSV() }
         }
     }
 
@@ -115,5 +142,21 @@ struct MainWindowView: View {
         panel.prompt = loc("Scan")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         viewModel.startScan(path: url.path)
+    }
+
+    private func exportCSV() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.nameFieldStringValue = (viewModel.scannedPath.map { ($0 as NSString).lastPathComponent } ?? "scan") + ".csv"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        Task {
+            guard let csv = await viewModel.exportCSV() else { return }
+            do {
+                try csv.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                viewModel.lastErrorMessage = error.localizedDescription
+            }
+        }
     }
 }
