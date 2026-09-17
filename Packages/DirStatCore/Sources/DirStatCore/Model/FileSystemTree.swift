@@ -1,0 +1,100 @@
+/// How to rank nodes for display (tree list order, treemap tile order).
+public enum SizeMode: Sendable {
+    case logical
+    case allocated
+}
+
+/// Owns the single shared arena of `FileSystemNode`s for one scan. Scanning workers
+/// build isolated `LocalScanResult`s with their own local arenas and extension tables
+/// (no shared mutable state, no actor hops per file) and hand them to `mergeChildren`
+/// in batches — amortizing actor-hop cost from one-per-file down to one-per-directory
+/// (or coarser).
+public actor FileSystemTree {
+    private var nodes: [FileSystemNode] = []
+    private var extensionTable = ExtensionTable()
+    public private(set) var rootID: NodeID?
+
+    public init() {}
+
+    /// Creates the tree's root node (typically the scanned volume or folder).
+    @discardableResult
+    public func makeRoot(name: String) -> NodeID {
+        let id = NodeID(rawValue: Int32(nodes.count))
+        nodes.append(FileSystemNode(parent: nil, name: name, isDirectory: true))
+        rootID = id
+        return id
+    }
+
+    public func node(_ id: NodeID) -> FileSystemNode {
+        nodes[Int(id.rawValue)]
+    }
+
+    public var nodeCount: Int { nodes.count }
+
+    public func extensionName(for id: ExtensionID) -> String? {
+        extensionTable.name(for: id)
+    }
+
+    /// Merges a locally-scanned directory's contents in as children of `parentID`,
+    /// remapping the local arena's node indices and extension IDs into this tree's
+    /// shared arena/extension table. Does not touch ancestor aggregates — call
+    /// `finalizeAggregation()` once after all merges for a scan are complete.
+    @discardableResult
+    func mergeChildren(into parentID: NodeID, result: LocalScanResult) -> [NodeID] {
+        let base = Int32(nodes.count)
+        func remap(_ localID: LocalNodeID) -> NodeID {
+            NodeID(rawValue: base + localID.rawValue)
+        }
+
+        var extensionRemap: [ExtensionID: ExtensionID] = [:]
+        for (index, name) in result.extensionTable.allNames.enumerated() {
+            extensionRemap[ExtensionID(rawValue: Int32(index))] = extensionTable.intern(name)
+        }
+
+        for localNode in result.nodes {
+            nodes.append(FileSystemNode(
+                parent: localNode.parent.map(remap) ?? parentID,
+                name: localNode.name,
+                extensionID: localNode.extensionID == .none ? .none : (extensionRemap[localNode.extensionID] ?? .none),
+                sizeLogical: localNode.sizeLogical,
+                sizeAllocated: localNode.sizeAllocated,
+                isDirectory: localNode.isDirectory,
+                isPackage: localNode.isPackage,
+                isSymlink: localNode.isSymlink,
+                permissionDenied: localNode.permissionDenied,
+                children: localNode.children.map(remap)
+            ))
+        }
+
+        let newTopLevel = result.topLevelChildren.map(remap)
+        nodes[Int(parentID.rawValue)].children.append(contentsOf: newTopLevel)
+        nodes[Int(parentID.rawValue)].childrenSortedCache = nil
+        return newTopLevel
+    }
+
+    /// Full bottom-up rollup of `aggregateLogical`/`aggregateAllocated` for every
+    /// directory in the tree. Call once after all subtrees have been merged.
+    public func finalizeAggregation() {
+        guard let rootID else { return }
+        SizeAggregator.aggregate(nodes: &nodes, root: rootID)
+    }
+
+    /// Children of `id`, sorted descending by the given size mode. Computes and
+    /// caches the sort order on first access; the cache is invalidated by any
+    /// merge into this node.
+    public func children(of id: NodeID, sortedBy mode: SizeMode) -> [NodeID] {
+        var parentNode = nodes[Int(id.rawValue)]
+        if let cached = parentNode.childrenSortedCache {
+            return cached
+        }
+        let sorted = parentNode.children.sorted(by: NodeSortComparator.bySize(mode: mode, in: nodes))
+        parentNode.childrenSortedCache = sorted
+        nodes[Int(id.rawValue)] = parentNode
+        return sorted
+    }
+
+    /// Extension stats aggregated across the whole tree.
+    public func extensionStats() -> [ExtensionStats] {
+        ExtensionAggregator.aggregate(nodes: nodes, extensionTable: extensionTable)
+    }
+}
