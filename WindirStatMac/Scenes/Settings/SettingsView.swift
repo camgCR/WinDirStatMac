@@ -15,6 +15,10 @@ struct SettingsView: View {
                 .pickerStyle(.radioGroup)
             }
 
+            Section("Limpieza") {
+                Toggle("Confirmar antes de mover a la Papelera o eliminar", isOn: $settings.confirmBeforeDelete)
+            }
+
             Section("Treemap") {
                 VStack(alignment: .leading) {
                     Slider(value: $settings.treemapMinTileArea, in: 4...100, step: 1)

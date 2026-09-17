@@ -34,6 +34,7 @@ struct FileTreeOutlineView: NSViewRepresentable {
         outlineView.addTableColumn(sizeColumn)
 
         context.coordinator.outlineView = outlineView
+        outlineView.menu = context.coordinator.makeContextMenu()
 
         let scrollView = NSScrollView()
         scrollView.documentView = outlineView
@@ -45,7 +46,8 @@ struct FileTreeOutlineView: NSViewRepresentable {
         let coordinator = context.coordinator
         guard let outlineView = scrollView.documentView as? NSOutlineView else { return }
 
-        if coordinator.currentRootID != viewModel.zoomRootID {
+        if coordinator.currentRootID != viewModel.zoomRootID || coordinator.lastKnownTreeVersion != viewModel.treeVersion {
+            coordinator.lastKnownTreeVersion = viewModel.treeVersion
             coordinator.reset(newRoot: viewModel.zoomRootID)
             outlineView.reloadData()
         }
@@ -75,6 +77,7 @@ final class FileTreeCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineVie
     private(set) var currentRootID: NodeID?
     var lastAppliedSelection: NodeID?
     var applyingProgrammaticSelection = false
+    var lastKnownTreeVersion = 0
 
     private var childrenCache: [NodeID: [NodeID]] = [:]
     private var nodeCache: [NodeID: FileSystemNode] = [:]
@@ -228,5 +231,61 @@ final class FileTreeCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineVie
         }
         viewModel.selectedNodeID = id
         lastAppliedSelection = id
+    }
+
+    // MARK: Context menu / cleanup actions
+
+    func makeContextMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(withTitle: "Revelar en Finder", action: #selector(revealClicked), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Abrir", action: #selector(openClicked), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Mover a la Papelera", action: #selector(trashClicked), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Eliminar…", action: #selector(deleteClicked), keyEquivalent: "").target = self
+        return menu
+    }
+
+    private func clickedNodeID() -> NodeID? {
+        guard let outlineView, outlineView.clickedRow >= 0, let item = outlineView.item(atRow: outlineView.clickedRow) else { return nil }
+        return nodeID(from: item)
+    }
+
+    @objc private func revealClicked() {
+        guard let id = clickedNodeID() else { return }
+        Task { await viewModel.revealInFinder(id) }
+    }
+
+    @objc private func openClicked() {
+        guard let id = clickedNodeID() else { return }
+        Task { await viewModel.openWithDefaultApplication(id) }
+    }
+
+    @objc private func trashClicked() {
+        guard let id = clickedNodeID() else { return }
+        confirmIfNeeded(message: "¿Mover este elemento a la Papelera?", detail: "Podrás recuperarlo desde la Papelera.", alwaysConfirm: false) {
+            Task { await self.viewModel.moveToTrash(id) }
+        }
+    }
+
+    @objc private func deleteClicked() {
+        guard let id = clickedNodeID() else { return }
+        confirmIfNeeded(message: "¿Eliminar este elemento permanentemente?", detail: "Esta acción no se puede deshacer.", alwaysConfirm: true) {
+            Task { await self.viewModel.deletePermanently(id) }
+        }
+    }
+
+    private func confirmIfNeeded(message: String, detail: String, alwaysConfirm: Bool, perform: @escaping () -> Void) {
+        guard alwaysConfirm || AppSettings.shared.confirmBeforeDelete else {
+            perform()
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.informativeText = detail
+        alert.addButton(withTitle: "Continuar")
+        alert.addButton(withTitle: "Cancelar")
+        if alert.runModal() == .alertFirstButtonReturn {
+            perform()
+        }
     }
 }

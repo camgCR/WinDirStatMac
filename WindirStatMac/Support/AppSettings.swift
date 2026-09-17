@@ -15,6 +15,7 @@ final class AppSettings {
         static let treatPackagesAsFiles = "treatPackagesAsFiles"
         static let sizeMode = "sizeMode"
         static let treemapMinTileArea = "treemapMinTileArea"
+        static let confirmBeforeDelete = "confirmBeforeDelete"
     }
 
     var treatPackagesAsFiles: Bool {
@@ -29,15 +30,24 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(treemapMinTileArea, forKey: Keys.treemapMinTileArea) }
     }
 
+    /// Whether "Move to Trash" and "Delete Permanently" ask for confirmation first.
+    /// Trash is recoverable either way; this mainly guards against fat-fingering a
+    /// permanent delete.
+    var confirmBeforeDelete: Bool {
+        didSet { UserDefaults.standard.set(confirmBeforeDelete, forKey: Keys.confirmBeforeDelete) }
+    }
+
     private init() {
         let defaults = UserDefaults.standard
         defaults.register(defaults: [
             Keys.treatPackagesAsFiles: true,
             Keys.sizeMode: "allocated",
             Keys.treemapMinTileArea: 12.0,
+            Keys.confirmBeforeDelete: true,
         ])
         treatPackagesAsFiles = defaults.bool(forKey: Keys.treatPackagesAsFiles)
         sizeMode = defaults.string(forKey: Keys.sizeMode) == "logical" ? .logical : .allocated
         treemapMinTileArea = defaults.double(forKey: Keys.treemapMinTileArea)
+        confirmBeforeDelete = defaults.bool(forKey: Keys.confirmBeforeDelete)
     }
 }

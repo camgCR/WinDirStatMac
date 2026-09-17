@@ -47,6 +47,7 @@ public struct DirectoryScanner: Sendable {
         let rootID = await tree.makeRoot(name: rootName)
 
         guard let rootFD = POSIXFileEnumerator.openDirectory(atPath: rootPath) else {
+            await tree.recordDeniedPaths([rootPath])
             await progress?.markComplete()
             return tree
         }
@@ -54,6 +55,7 @@ public struct DirectoryScanner: Sendable {
         let budget = ConcurrencyBudget(limit: options.maxConcurrency)
         let result = await scanDirectoryContents(fd: rootFD, path: rootPath, budget: budget, progress: progress)
         await tree.mergeChildren(into: rootID, result: result)
+        await tree.recordDeniedPaths(result.deniedPaths)
         await tree.finalizeAggregation()
         await progress?.markComplete()
         return tree

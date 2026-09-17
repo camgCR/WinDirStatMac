@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import DirStatCore
 
 struct TreemapView: NSViewRepresentable {
@@ -10,6 +11,10 @@ struct TreemapView: NSViewRepresentable {
         view.onSelect = { [coordinator = context.coordinator] id in coordinator.handleSelect(id) }
         view.onHover = { [coordinator = context.coordinator] id in coordinator.handleHover(id) }
         view.onZoomRequest = { [coordinator = context.coordinator] id in coordinator.handleZoomRequest(id) }
+        view.onReveal = { [coordinator = context.coordinator] id in coordinator.handleReveal(id) }
+        view.onOpen = { [coordinator = context.coordinator] id in coordinator.handleOpen(id) }
+        view.onTrash = { [coordinator = context.coordinator] id in coordinator.handleTrash(id) }
+        view.onDelete = { [coordinator = context.coordinator] id in coordinator.handleDelete(id) }
         return view
     }
 
@@ -33,6 +38,7 @@ final class TreemapCoordinator: NSObject {
     private var lastSizeMode: SizeMode?
     private var lastSize: CGSize = .zero
     private var lastMinTileArea: Double?
+    private var lastTreeVersion: Int?
     private var recomputeTask: Task<Void, Never>?
 
     init(viewModel: ScanViewModel) {
@@ -42,13 +48,15 @@ final class TreemapCoordinator: NSObject {
     func recomputeIfNeeded(bounds: CGSize) {
         guard let zoomRoot = viewModel.zoomRootID, bounds.width > 0, bounds.height > 0 else { return }
         let minTileArea = AppSettings.shared.treemapMinTileArea
-        let needsRecompute = lastZoomRoot != zoomRoot || lastSizeMode != viewModel.sizeMode || lastSize != bounds || lastMinTileArea != minTileArea
+        let needsRecompute = lastZoomRoot != zoomRoot || lastSizeMode != viewModel.sizeMode || lastSize != bounds
+            || lastMinTileArea != minTileArea || lastTreeVersion != viewModel.treeVersion
         guard needsRecompute else { return }
 
         lastZoomRoot = zoomRoot
         lastSizeMode = viewModel.sizeMode
         lastSize = bounds
         lastMinTileArea = minTileArea
+        lastTreeVersion = viewModel.treeVersion
 
         let treemapBounds = TreemapRect(x: 0, y: 0, width: bounds.width, height: bounds.height)
         recomputeTask?.cancel()
@@ -70,5 +78,40 @@ final class TreemapCoordinator: NSObject {
     func handleZoomRequest(_ id: NodeID) {
         viewModel.setZoomRoot(id)
         lastZoomRoot = nil // force a relayout on the next pass even if the view's bounds haven't changed
+    }
+
+    func handleReveal(_ id: NodeID) {
+        Task { await viewModel.revealInFinder(id) }
+    }
+
+    func handleOpen(_ id: NodeID) {
+        Task { await viewModel.openWithDefaultApplication(id) }
+    }
+
+    func handleTrash(_ id: NodeID) {
+        confirmIfNeeded(message: "¿Mover este elemento a la Papelera?", detail: "Podrás recuperarlo desde la Papelera.", alwaysConfirm: false) {
+            Task { await self.viewModel.moveToTrash(id) }
+        }
+    }
+
+    func handleDelete(_ id: NodeID) {
+        confirmIfNeeded(message: "¿Eliminar este elemento permanentemente?", detail: "Esta acción no se puede deshacer.", alwaysConfirm: true) {
+            Task { await self.viewModel.deletePermanently(id) }
+        }
+    }
+
+    private func confirmIfNeeded(message: String, detail: String, alwaysConfirm: Bool, perform: @escaping () -> Void) {
+        guard alwaysConfirm || AppSettings.shared.confirmBeforeDelete else {
+            perform()
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.informativeText = detail
+        alert.addButton(withTitle: "Continuar")
+        alert.addButton(withTitle: "Cancelar")
+        if alert.runModal() == .alertFirstButtonReturn {
+            perform()
+        }
     }
 }

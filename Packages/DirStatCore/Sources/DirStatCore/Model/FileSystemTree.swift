@@ -13,6 +13,9 @@ public actor FileSystemTree {
     private var nodes: [FileSystemNode] = []
     private var extensionTable = ExtensionTable()
     public private(set) var rootID: NodeID?
+    /// Absolute paths the scan couldn't read into (EACCES/EPERM), typically because
+    /// the app lacks Full Disk Access. Populated once by `DirectoryScanner.scan`.
+    public private(set) var deniedPaths: [String] = []
 
     public init() {}
 
@@ -72,6 +75,10 @@ public actor FileSystemTree {
         return newTopLevel
     }
 
+    func recordDeniedPaths(_ paths: [String]) {
+        deniedPaths = paths
+    }
+
     /// Full bottom-up rollup of `aggregateLogical`/`aggregateAllocated` for every
     /// directory in the tree. Call once after all subtrees have been merged.
     public func finalizeAggregation() {
@@ -96,5 +103,28 @@ public actor FileSystemTree {
     /// Extension stats aggregated across the whole tree.
     public func extensionStats() -> [ExtensionStats] {
         ExtensionAggregator.aggregate(nodes: nodes, extensionTable: extensionTable)
+    }
+
+    /// Detaches `id` from its parent (after the corresponding file/directory has
+    /// actually been deleted on disk) and subtracts its size from every ancestor,
+    /// without a full rescan. Returns the parent's id, or `nil` if `id` is the root
+    /// (which can't be removed this way) or already detached. The node's own arena
+    /// slot is left in place — it becomes unreachable from the root, not reclaimed —
+    /// so no other `NodeID` is invalidated by this call.
+    @discardableResult
+    public func removeFromTree(_ id: NodeID) -> NodeID? {
+        guard Int(id.rawValue) < nodes.count, let parentID = nodes[Int(id.rawValue)].parent else { return nil }
+        let removed = nodes[Int(id.rawValue)]
+
+        nodes[Int(parentID.rawValue)].children.removeAll { $0 == id }
+        nodes[Int(parentID.rawValue)].childrenSortedCache?.removeAll { $0 == id }
+
+        SizeAggregator.propagateDelta(
+            nodes: &nodes,
+            from: parentID,
+            logicalDelta: -removed.aggregateLogical,
+            allocatedDelta: -removed.aggregateAllocated
+        )
+        return parentID
     }
 }

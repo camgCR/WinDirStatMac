@@ -8,9 +8,21 @@ struct MainWindowView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if viewModel.deniedPathCount > 0 {
+                FullDiskAccessBanner(deniedPathCount: viewModel.deniedPathCount, onRescan: { viewModel.rescan() })
+                Divider()
+            }
             content
             Divider()
             statusBar
+        }
+        .alert("No se pudo completar la acción", isPresented: Binding(
+            get: { viewModel.lastErrorMessage != nil },
+            set: { if !$0 { viewModel.lastErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.lastErrorMessage ?? "")
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {

@@ -30,4 +30,23 @@ enum SizeAggregator {
         nodes[Int(id.rawValue)].aggregateAllocated = totalAllocated
         return (totalLogical, totalAllocated)
     }
+
+    /// Applies a size delta to `startID` and every ancestor above it, without
+    /// touching any other node — used after a single file/directory is deleted, so
+    /// the whole tree doesn't need re-aggregating from scratch. Also invalidates
+    /// each updated node's parent's sorted-children cache, since that node's own
+    /// size (and so its position among its siblings) just changed.
+    static func propagateDelta(nodes: inout [FileSystemNode], from startID: NodeID, logicalDelta: Int64, allocatedDelta: Int64) {
+        guard logicalDelta != 0 || allocatedDelta != 0 else { return }
+        var current: NodeID? = startID
+        while let id = current {
+            nodes[Int(id.rawValue)].aggregateLogical += logicalDelta
+            nodes[Int(id.rawValue)].aggregateAllocated += allocatedDelta
+            let parent = nodes[Int(id.rawValue)].parent
+            if let parent {
+                nodes[Int(parent.rawValue)].childrenSortedCache = nil
+            }
+            current = parent
+        }
+    }
 }

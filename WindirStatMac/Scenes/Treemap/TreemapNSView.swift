@@ -20,6 +20,10 @@ final class TreemapNSView: NSView {
     var onSelect: ((NodeID?) -> Void)?
     var onZoomRequest: ((NodeID) -> Void)?
     var onHover: ((NodeID?) -> Void)?
+    var onReveal: ((NodeID) -> Void)?
+    var onOpen: ((NodeID) -> Void)?
+    var onTrash: ((NodeID) -> Void)?
+    var onDelete: ((NodeID) -> Void)?
 
     private var trackingArea: NSTrackingArea?
 
@@ -155,5 +159,40 @@ final class TreemapNSView: NSView {
                 onZoomRequest?(parent)
             }
         }
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard let hit = tile(at: point) else { return }
+        onSelect?(hit.id)
+
+        let menu = NSMenu()
+        menu.addItem(withTitle: "Revelar en Finder", action: #selector(revealMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
+        menu.addItem(withTitle: "Abrir", action: #selector(openMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Mover a la Papelera", action: #selector(trashMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
+        menu.addItem(withTitle: "Eliminar…", action: #selector(deleteMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
+        for item in menu.items { item.target = self }
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func revealMenuAction(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? NodeID else { return }
+        onReveal?(id)
+    }
+
+    @objc private func openMenuAction(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? NodeID else { return }
+        onOpen?(id)
+    }
+
+    @objc private func trashMenuAction(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? NodeID else { return }
+        onTrash?(id)
+    }
+
+    @objc private func deleteMenuAction(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? NodeID else { return }
+        onDelete?(id)
     }
 }

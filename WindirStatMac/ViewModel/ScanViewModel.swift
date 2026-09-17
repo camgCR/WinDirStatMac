@@ -18,6 +18,12 @@ final class ScanViewModel {
     private(set) var tree: FileSystemTree?
     private(set) var rootID: NodeID?
     private(set) var scannedPath: String?
+    private(set) var deniedPathCount: Int = 0
+    var lastErrorMessage: String?
+    /// Bumped whenever the tree's shape changes outside of a normal scan (i.e. a
+    /// cleanup action), so the tree list and treemap know to invalidate their
+    /// local caches and re-fetch even though `rootID`/`zoomRootID` didn't change.
+    private(set) var treeVersion: Int = 0
 
     var zoomRootID: NodeID?
     var selectedNodeID: NodeID?
@@ -56,8 +62,16 @@ final class ScanViewModel {
             self.tree = resultTree
             self.rootID = await resultTree.rootID
             self.zoomRootID = self.rootID
+            self.deniedPathCount = await resultTree.deniedPaths.count
             self.scanState = .completed
         }
+    }
+
+    /// Re-runs the scan against the same path (e.g. after the user grants Full
+    /// Disk Access in System Settings).
+    func rescan() {
+        guard let scannedPath else { return }
+        startScan(path: scannedPath)
     }
 
     func cancelScan() {
@@ -108,5 +122,65 @@ final class ScanViewModel {
             current = node.parent
         }
         return chain.reversed()
+    }
+
+    /// Reconstructs `id`'s absolute filesystem path by walking parent pointers up
+    /// to the scan root, then prefixing the root's own scanned path — nodes only
+    /// store their own `name`, not a full path.
+    func fullPath(of id: NodeID) async -> String? {
+        guard let scannedPath, let rootID else { return nil }
+        if id == rootID { return scannedPath }
+
+        var components: [String] = []
+        var current: NodeID? = id
+        while let currentID = current, currentID != rootID {
+            guard let node = await self.node(currentID) else { return nil }
+            components.append(node.name)
+            current = node.parent
+        }
+        guard current == rootID else { return nil }
+        return scannedPath + "/" + components.reversed().joined(separator: "/")
+    }
+
+    func revealInFinder(_ id: NodeID) async {
+        guard let path = await fullPath(of: id) else { return }
+        CleanupActions.revealInFinder(path: path)
+    }
+
+    func openWithDefaultApplication(_ id: NodeID) async {
+        guard let path = await fullPath(of: id) else { return }
+        CleanupActions.openWithDefaultApplication(path: path)
+    }
+
+    func moveToTrash(_ id: NodeID) async {
+        guard let path = await fullPath(of: id) else { return }
+        do {
+            try CleanupActions.moveToTrash(path: path)
+            await detachFromTree(id)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    func deletePermanently(_ id: NodeID) async {
+        guard let path = await fullPath(of: id) else { return }
+        do {
+            try CleanupActions.deletePermanently(path: path)
+            await detachFromTree(id)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    /// Removes `id` from the in-memory tree and rolls the size change up its
+    /// ancestors, without a full rescan — called after the file was actually
+    /// deleted on disk.
+    private func detachFromTree(_ id: NodeID) async {
+        guard let tree else { return }
+        guard let parentID = await tree.removeFromTree(id) else { return }
+        if selectedNodeID == id { selectedNodeID = parentID }
+        if hoveredNodeID == id { hoveredNodeID = nil }
+        if zoomRootID == id { zoomRootID = parentID }
+        treeVersion += 1
     }
 }
