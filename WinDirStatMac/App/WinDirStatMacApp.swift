@@ -6,7 +6,7 @@ extension Notification.Name {
 }
 
 @main
-struct WindirStatMacApp: App {
+struct WinDirStatMacApp: App {
     @State private var viewModel = ScanViewModel()
 
     var body: some Scene {

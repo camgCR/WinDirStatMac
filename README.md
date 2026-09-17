@@ -1,18 +1,19 @@
-# WindirStatMac
+# WinDirStatMac
 
 A native macOS disk usage visualizer — folder tree, extension breakdown, and an
 interactive treemap — built with Swift, SwiftUI, and AppKit. No web views, no
 Electron.
 
-WindirStatMac is a from-scratch reimplementation of the ideas behind
-[WinDirStat](https://windirstat.net) ([source](https://github.com/windirstat/windirstat))
-for macOS. WinDirStat
-itself is a Windows-only C++/MFC application; none of its source is portable to
-or reused on macOS. This project instead reimplements the same kind of tool
-(disk scan → folder tree with sizes → extension list → squarified treemap →
-cleanup actions) natively for macOS, informed by WinDirStat's feature set and
-its choice of the squarified treemap layout algorithm. See
-[NOTICE.md](NOTICE.md) for the full attribution.
+WinDirStatMac is a from-scratch reimplementation of the ideas behind
+[WinDirStat](https://windirstat.net) ([source](https://github.com/windirstat/windirstat)) —
+created by **Bernhard Seifert** and maintained today by Bryan Berns, Oliver
+Schneider, and the WinDirStat community — for macOS. WinDirStat itself is a
+Windows-only C++/MFC application; none of its source is portable to or reused
+on macOS. This project instead reimplements the same kind of tool (disk scan →
+folder tree with sizes → extension list → squarified treemap → cleanup
+actions) natively for macOS, informed by WinDirStat's feature set and its
+choice of the squarified treemap layout algorithm. See [NOTICE.md](NOTICE.md)
+for the full attribution.
 
 ## Status
 
@@ -42,7 +43,7 @@ swift test --package-path Packages/DirStatCore   # run the core engine's unit te
 
 ## License
 
-WindirStatMac is licensed under the **GNU General Public License v2.0 or
+WinDirStatMac is licensed under the **GNU General Public License v2.0 or
 later** (GPL-2.0-or-later) — see [LICENSE](LICENSE). This matches the license
 of the WinDirStat project that inspired it. See [NOTICE.md](NOTICE.md) for why,
 and for the full attribution to the original project and its authors.

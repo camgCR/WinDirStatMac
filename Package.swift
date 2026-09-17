@@ -2,16 +2,16 @@
 import PackageDescription
 
 let package = Package(
-    name: "WindirStatMac",
+    name: "WinDirStatMac",
     platforms: [.macOS(.v14)],
     dependencies: [
         .package(path: "Packages/DirStatCore")
     ],
     targets: [
         .executableTarget(
-            name: "WindirStatMac",
+            name: "WinDirStatMac",
             dependencies: ["DirStatCore"],
-            path: "WindirStatMac"
+            path: "WinDirStatMac"
         )
     ]
 )

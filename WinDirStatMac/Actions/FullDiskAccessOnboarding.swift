@@ -35,8 +35,8 @@ struct FullDiskAccessBanner: View {
 
     private var message: String {
         deniedPathCount == 1
-            ? "1 ubicación no se pudo leer. WindirStatMac necesita Acceso completo al disco para verla."
-            : "\(deniedPathCount) ubicaciones no se pudieron leer. WindirStatMac necesita Acceso completo al disco para verlas."
+            ? "1 ubicación no se pudo leer. WinDirStatMac necesita Acceso completo al disco para verla."
+            : "\(deniedPathCount) ubicaciones no se pudieron leer. WinDirStatMac necesita Acceso completo al disco para verlas."
     }
 
     private func openPrivacySettings() {
