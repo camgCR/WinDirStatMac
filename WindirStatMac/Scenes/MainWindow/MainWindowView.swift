@@ -4,36 +4,50 @@ import DirStatCore
 
 struct MainWindowView: View {
     var viewModel: ScanViewModel
+    @State private var showInspector = true
 
     var body: some View {
         VStack(spacing: 0) {
-            toolbar
-            Divider()
             content
             Divider()
             statusBar
         }
-    }
-
-    private var toolbar: some View {
-        HStack {
-            Button("Escanear carpeta…", action: chooseFolder)
-            if let path = viewModel.scannedPath {
-                Text(path)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button("Escanear carpeta…", action: chooseFolder)
             }
-            Spacer()
-            Picker("Tamaño", selection: Binding(get: { viewModel.sizeMode }, set: { viewModel.sizeMode = $0 })) {
-                Text("En disco").tag(SizeMode.allocated)
-                Text("Lógico").tag(SizeMode.logical)
+            ToolbarItem(placement: .principal) {
+                if let path = viewModel.scannedPath {
+                    Text(path)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
-            .pickerStyle(.segmented)
-            .frame(width: 220)
+            ToolbarItem {
+                Picker("Tamaño", selection: Binding(get: { viewModel.sizeMode }, set: { viewModel.sizeMode = $0 })) {
+                    Text("En disco").tag(SizeMode.allocated)
+                    Text("Lógico").tag(SizeMode.logical)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 200)
+            }
+            ToolbarItem {
+                Button {
+                    showInspector.toggle()
+                } label: {
+                    Label("Extensiones", systemImage: "sidebar.right")
+                }
+            }
         }
-        .padding(8)
+        .inspector(isPresented: $showInspector) {
+            ExtensionListView(viewModel: viewModel)
+                .inspectorColumnWidth(min: 220, ideal: 260, max: 360)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openFolderRequested)) { _ in
+            chooseFolder()
+        }
     }
 
     @ViewBuilder

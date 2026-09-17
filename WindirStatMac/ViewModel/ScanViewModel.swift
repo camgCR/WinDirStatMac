@@ -22,10 +22,19 @@ final class ScanViewModel {
     var zoomRootID: NodeID?
     var selectedNodeID: NodeID?
     var hoveredNodeID: NodeID?
-    var sizeMode: SizeMode = .allocated
-    var treatPackagesAsFiles: Bool = true
+    var sizeMode: SizeMode {
+        didSet { AppSettings.shared.sizeMode = sizeMode }
+    }
+    var treatPackagesAsFiles: Bool {
+        didSet { AppSettings.shared.treatPackagesAsFiles = treatPackagesAsFiles }
+    }
 
     private var scanTask: Task<Void, Never>?
+
+    init() {
+        sizeMode = AppSettings.shared.sizeMode
+        treatPackagesAsFiles = AppSettings.shared.treatPackagesAsFiles
+    }
 
     func startScan(path: String) {
         scanTask?.cancel()

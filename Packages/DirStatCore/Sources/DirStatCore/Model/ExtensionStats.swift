@@ -30,7 +30,8 @@ public struct ExtensionTable: Sendable {
 }
 
 /// Aggregated statistics for a single extension across a scanned tree (or subtree).
-public struct ExtensionStats: Sendable, Equatable {
+public struct ExtensionStats: Sendable, Equatable, Identifiable {
+    public var id: ExtensionID { extensionID }
     public let extensionID: ExtensionID
     public let name: String?
     public var fileCount: Int

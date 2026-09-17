@@ -24,10 +24,6 @@ struct TreemapView: NSViewRepresentable {
     }
 }
 
-/// Minimum on-screen tile area (points²) before recursion into a directory's
-/// children stops and it's drawn as a single flat tile instead.
-private let minTileArea = 12.0
-
 @MainActor
 final class TreemapCoordinator: NSObject {
     let viewModel: ScanViewModel
@@ -36,6 +32,7 @@ final class TreemapCoordinator: NSObject {
     private var lastZoomRoot: NodeID?
     private var lastSizeMode: SizeMode?
     private var lastSize: CGSize = .zero
+    private var lastMinTileArea: Double?
     private var recomputeTask: Task<Void, Never>?
 
     init(viewModel: ScanViewModel) {
@@ -44,12 +41,14 @@ final class TreemapCoordinator: NSObject {
 
     func recomputeIfNeeded(bounds: CGSize) {
         guard let zoomRoot = viewModel.zoomRootID, bounds.width > 0, bounds.height > 0 else { return }
-        let needsRecompute = lastZoomRoot != zoomRoot || lastSizeMode != viewModel.sizeMode || lastSize != bounds
+        let minTileArea = AppSettings.shared.treemapMinTileArea
+        let needsRecompute = lastZoomRoot != zoomRoot || lastSizeMode != viewModel.sizeMode || lastSize != bounds || lastMinTileArea != minTileArea
         guard needsRecompute else { return }
 
         lastZoomRoot = zoomRoot
         lastSizeMode = viewModel.sizeMode
         lastSize = bounds
+        lastMinTileArea = minTileArea
 
         let treemapBounds = TreemapRect(x: 0, y: 0, width: bounds.width, height: bounds.height)
         recomputeTask?.cancel()
