@@ -22,6 +22,14 @@ struct SearchView: View {
                     ProgressView()
                         .controlSize(.small)
                 }
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(loc("Close"))
             }
             .padding(12)
             Divider()

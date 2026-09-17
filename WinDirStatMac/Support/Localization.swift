@@ -81,6 +81,7 @@ private let spanishTranslations: [String: String] = [
     "Search": "Buscar",
     "Search files and folders…": "Buscar archivos y carpetas…",
     "Search this scan": "Buscar en este escaneo",
+    "Close": "Cerrar",
     "Export CSV…": "Exportar CSV…",
 
     // Duplicates
