@@ -17,6 +17,7 @@ final class AppSettings {
         static let sizeMode = "sizeMode"
         static let treemapMinTileArea = "treemapMinTileArea"
         static let confirmBeforeDelete = "confirmBeforeDelete"
+        static let language = "language"
     }
 
     var treatPackagesAsFiles: Bool {
@@ -38,6 +39,14 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(confirmBeforeDelete, forKey: Keys.confirmBeforeDelete) }
     }
 
+    /// UI display language, independent of the system's own language — an
+    /// explicit in-app choice rather than relying on per-app system language
+    /// overrides, since this ships as a bare executable without an Info.plist
+    /// declaring supported locales yet.
+    var language: AppLanguage {
+        didSet { UserDefaults.standard.set(language.rawValue, forKey: Keys.language) }
+    }
+
     private init() {
         let defaults = UserDefaults.standard
         defaults.register(defaults: [
@@ -45,10 +54,12 @@ final class AppSettings {
             Keys.sizeMode: "allocated",
             Keys.treemapMinTileArea: 12.0,
             Keys.confirmBeforeDelete: true,
+            Keys.language: AppLanguage.systemDefault.rawValue,
         ])
         treatPackagesAsFiles = defaults.bool(forKey: Keys.treatPackagesAsFiles)
         sizeMode = defaults.string(forKey: Keys.sizeMode) == "logical" ? .logical : .allocated
         treemapMinTileArea = defaults.double(forKey: Keys.treemapMinTileArea)
         confirmBeforeDelete = defaults.bool(forKey: Keys.confirmBeforeDelete)
+        language = AppLanguage(rawValue: defaults.string(forKey: Keys.language) ?? "") ?? .english
     }
 }

@@ -23,13 +23,13 @@ struct FileTreeOutlineView: NSViewRepresentable {
         outlineView.style = .inset
 
         let nameColumn = NSTableColumn(identifier: .init("name"))
-        nameColumn.title = "Name"
+        nameColumn.title = loc("Name")
         nameColumn.minWidth = 180
         outlineView.addTableColumn(nameColumn)
         outlineView.outlineTableColumn = nameColumn
 
         let sizeColumn = NSTableColumn(identifier: .init("size"))
-        sizeColumn.title = "Size"
+        sizeColumn.title = loc("Size")
         sizeColumn.width = 180
         sizeColumn.minWidth = 140
         outlineView.addTableColumn(sizeColumn)
@@ -71,7 +71,7 @@ struct FileTreeOutlineView: NSViewRepresentable {
 }
 
 @MainActor
-final class FileTreeCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate {
+final class FileTreeCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuDelegate {
     let viewModel: ScanViewModel
     weak var outlineView: NSOutlineView?
 
@@ -241,12 +241,25 @@ final class FileTreeCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineVie
 
     func makeContextMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Revelar en Finder", action: #selector(revealClicked), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Abrir", action: #selector(openClicked), keyEquivalent: "").target = self
+        menu.delegate = self
+        menu.addItem(withTitle: loc("Reveal in Finder"), action: #selector(revealClicked), keyEquivalent: "").target = self
+        menu.addItem(withTitle: loc("Open"), action: #selector(openClicked), keyEquivalent: "").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Mover a la Papelera", action: #selector(trashClicked), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Eliminar…", action: #selector(deleteClicked), keyEquivalent: "").target = self
+        menu.addItem(withTitle: loc("Move to Trash"), action: #selector(trashClicked), keyEquivalent: "").target = self
+        menu.addItem(withTitle: loc("Delete…"), action: #selector(deleteClicked), keyEquivalent: "").target = self
         return menu
+    }
+
+    /// The menu's item titles are set once at creation; refresh them from the
+    /// current language right before each show, so a language change in
+    /// Settings is reflected without needing to rebuild the whole menu.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        let titles = [loc("Reveal in Finder"), loc("Open"), loc("Move to Trash"), loc("Delete…")]
+        var titleIndex = 0
+        for item in menu.items where !item.isSeparatorItem {
+            item.title = titles[titleIndex]
+            titleIndex += 1
+        }
     }
 
     private func clickedNodeID() -> NodeID? {
@@ -266,14 +279,14 @@ final class FileTreeCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineVie
 
     @objc private func trashClicked() {
         guard let id = clickedNodeID() else { return }
-        confirmIfNeeded(message: "¿Mover este elemento a la Papelera?", detail: "Podrás recuperarlo desde la Papelera.", alwaysConfirm: false) {
+        confirmIfNeeded(message: loc("Move this item to the Trash?"), detail: loc("You can restore it from the Trash."), alwaysConfirm: false) {
             Task { await self.viewModel.moveToTrash(id) }
         }
     }
 
     @objc private func deleteClicked() {
         guard let id = clickedNodeID() else { return }
-        confirmIfNeeded(message: "¿Eliminar este elemento permanentemente?", detail: "Esta acción no se puede deshacer.", alwaysConfirm: true) {
+        confirmIfNeeded(message: loc("Permanently delete this item?"), detail: loc("This action cannot be undone."), alwaysConfirm: true) {
             Task { await self.viewModel.deletePermanently(id) }
         }
     }
@@ -286,8 +299,8 @@ final class FileTreeCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineVie
         let alert = NSAlert()
         alert.messageText = message
         alert.informativeText = detail
-        alert.addButton(withTitle: "Continuar")
-        alert.addButton(withTitle: "Cancelar")
+        alert.addButton(withTitle: loc("Continue"))
+        alert.addButton(withTitle: loc("Cancel"))
         if alert.runModal() == .alertFirstButtonReturn {
             perform()
         }

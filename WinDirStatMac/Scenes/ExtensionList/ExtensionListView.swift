@@ -23,24 +23,24 @@ struct ExtensionListView: View {
 
     var body: some View {
         Table(sortedStats) {
-            TableColumn("Tipo") { stat in
+            TableColumn(loc("Type")) { stat in
                 HStack(spacing: 6) {
                     Circle()
                         .fill(Color(nsColor: ExtensionColorPalette.color(forExtension: stat.name)))
                         .frame(width: 8, height: 8)
-                    Text(stat.name ?? "(sin extensión)")
+                    Text(stat.name ?? loc("(no extension)"))
                         .lineLimit(1)
                 }
             }
             .width(min: 70, ideal: 110)
-            TableColumn("Archivos") { stat in
+            TableColumn(loc("Files")) { stat in
                 Text("\(stat.fileCount)")
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
             .width(min: 40, ideal: 50, max: 64)
-            TableColumn("Tamaño") { stat in
+            TableColumn(loc("Size")) { stat in
                 Text(ByteCountFormatter.string(fromByteCount: sizeValue(stat), countStyle: .file))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

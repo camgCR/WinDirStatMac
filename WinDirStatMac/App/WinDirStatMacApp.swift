@@ -21,7 +21,7 @@ struct WinDirStatMacApp: App {
         .defaultSize(width: 900, height: 600)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("Escanear carpeta…") {
+                Button(loc("Scan Folder…")) {
                     NotificationCenter.default.post(name: .openFolderRequested, object: nil)
                 }
                 .keyboardShortcut("o", modifiers: .command)

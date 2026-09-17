@@ -17,17 +17,17 @@ struct MainWindowView: View {
             Divider()
             statusBar
         }
-        .alert("No se pudo completar la acción", isPresented: Binding(
+        .alert(loc("Couldn't complete the action"), isPresented: Binding(
             get: { viewModel.lastErrorMessage != nil },
             set: { if !$0 { viewModel.lastErrorMessage = nil } }
         )) {
-            Button("OK", role: .cancel) {}
+            Button(loc("OK"), role: .cancel) {}
         } message: {
             Text(viewModel.lastErrorMessage ?? "")
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                Button("Escanear carpeta…", action: chooseFolder)
+                Button(loc("Scan Folder…"), action: chooseFolder)
             }
             ToolbarItem(placement: .principal) {
                 if let path = viewModel.scannedPath {
@@ -39,9 +39,9 @@ struct MainWindowView: View {
                 }
             }
             ToolbarItem {
-                Picker("Tamaño", selection: Binding(get: { viewModel.sizeMode }, set: { viewModel.sizeMode = $0 })) {
-                    Text("En disco").tag(SizeMode.allocated)
-                    Text("Lógico").tag(SizeMode.logical)
+                Picker(loc("Size"), selection: Binding(get: { viewModel.sizeMode }, set: { viewModel.sizeMode = $0 })) {
+                    Text(loc("On Disk")).tag(SizeMode.allocated)
+                    Text(loc("Logical")).tag(SizeMode.logical)
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 200)
@@ -50,7 +50,7 @@ struct MainWindowView: View {
                 Button {
                     showInspector.toggle()
                 } label: {
-                    Label("Extensiones", systemImage: "sidebar.right")
+                    Label(loc("Extensions"), systemImage: "sidebar.right")
                 }
             }
         }
@@ -81,9 +81,9 @@ struct MainWindowView: View {
             }
         } else {
             ContentUnavailableView(
-                "Ninguna carpeta escaneada",
+                loc("No Folder Scanned"),
                 systemImage: "internaldrive",
-                description: Text("Elige una carpeta para ver su contenido por tamaño.")
+                description: Text(loc("Choose a folder to see its contents by size."))
             )
         }
     }
@@ -92,13 +92,13 @@ struct MainWindowView: View {
         HStack {
             switch viewModel.scanState {
             case .idle:
-                Text("Listo")
+                Text(loc("Ready"))
             case .scanning(let progress):
                 ProgressView()
                     .controlSize(.small)
-                Text("Escaneando… \(progress.filesScanned) elementos, \(ByteCountFormatter.string(fromByteCount: progress.bytesScanned, countStyle: .file))")
+                Text(locScanningStatus(itemCount: progress.filesScanned))
             case .completed:
-                Text("Escaneo completo")
+                Text(loc("Scan complete"))
             }
             Spacer()
         }
@@ -112,7 +112,7 @@ struct MainWindowView: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.prompt = "Escanear"
+        panel.prompt = loc("Scan")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         viewModel.startScan(path: url.path)
     }

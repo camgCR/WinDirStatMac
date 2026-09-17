@@ -19,8 +19,8 @@ struct FullDiskAccessBanner: View {
                 Text(message)
                     .font(.callout)
                 Spacer()
-                Button("Abrir Preferencias del Sistema", action: openPrivacySettings)
-                Button("Reescanear", action: onRescan)
+                Button(loc("Open System Settings"), action: openPrivacySettings)
+                Button(loc("Rescan"), action: onRescan)
                 Button {
                     dismissed = true
                 } label: {
@@ -34,9 +34,10 @@ struct FullDiskAccessBanner: View {
     }
 
     private var message: String {
-        deniedPathCount == 1
-            ? "1 ubicación no se pudo leer. WinDirStatMac necesita Acceso completo al disco para verla."
-            : "\(deniedPathCount) ubicaciones no se pudieron leer. WinDirStatMac necesita Acceso completo al disco para verlas."
+        let template = deniedPathCount == 1
+            ? "%d location couldn't be read. WinDirStatMac needs Full Disk Access to see it."
+            : "%d locations couldn't be read. WinDirStatMac needs Full Disk Access to see them."
+        return String(format: loc(template), deniedPathCount)
     }
 
     private func openPrivacySettings() {

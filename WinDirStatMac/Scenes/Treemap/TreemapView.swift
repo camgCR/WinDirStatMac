@@ -90,13 +90,13 @@ final class TreemapCoordinator: NSObject {
     }
 
     func handleTrash(_ id: NodeID) {
-        confirmIfNeeded(message: "¿Mover este elemento a la Papelera?", detail: "Podrás recuperarlo desde la Papelera.", alwaysConfirm: false) {
+        confirmIfNeeded(message: loc("Move this item to the Trash?"), detail: loc("You can restore it from the Trash."), alwaysConfirm: false) {
             Task { await self.viewModel.moveToTrash(id) }
         }
     }
 
     func handleDelete(_ id: NodeID) {
-        confirmIfNeeded(message: "¿Eliminar este elemento permanentemente?", detail: "Esta acción no se puede deshacer.", alwaysConfirm: true) {
+        confirmIfNeeded(message: loc("Permanently delete this item?"), detail: loc("This action cannot be undone."), alwaysConfirm: true) {
             Task { await self.viewModel.deletePermanently(id) }
         }
     }
@@ -109,8 +109,8 @@ final class TreemapCoordinator: NSObject {
         let alert = NSAlert()
         alert.messageText = message
         alert.informativeText = detail
-        alert.addButton(withTitle: "Continuar")
-        alert.addButton(withTitle: "Cancelar")
+        alert.addButton(withTitle: loc("Continue"))
+        alert.addButton(withTitle: loc("Cancel"))
         if alert.runModal() == .alertFirstButtonReturn {
             perform()
         }

@@ -170,11 +170,11 @@ final class TreemapNSView: NSView {
         onSelect?(hit.id)
 
         let menu = NSMenu()
-        menu.addItem(withTitle: "Revelar en Finder", action: #selector(revealMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
-        menu.addItem(withTitle: "Abrir", action: #selector(openMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
+        menu.addItem(withTitle: loc("Reveal in Finder"), action: #selector(revealMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
+        menu.addItem(withTitle: loc("Open"), action: #selector(openMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Mover a la Papelera", action: #selector(trashMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
-        menu.addItem(withTitle: "Eliminar…", action: #selector(deleteMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
+        menu.addItem(withTitle: loc("Move to Trash"), action: #selector(trashMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
+        menu.addItem(withTitle: loc("Delete…"), action: #selector(deleteMenuAction(_:)), keyEquivalent: "").representedObject = hit.id
         for item in menu.items { item.target = self }
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
