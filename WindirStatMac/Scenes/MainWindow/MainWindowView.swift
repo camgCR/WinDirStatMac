@@ -39,7 +39,19 @@ struct MainWindowView: View {
     @ViewBuilder
     private var content: some View {
         if viewModel.rootID != nil {
-            FileTreeOutlineView(viewModel: viewModel)
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    FileTreeOutlineView(viewModel: viewModel)
+                        .frame(height: geometry.size.height * 0.5)
+                    Divider()
+                    TreemapBreadcrumbView(viewModel: viewModel)
+                    Divider()
+                    TreemapView(viewModel: viewModel)
+                        .frame(height: geometry.size.height * 0.5 - 30)
+                    Divider()
+                    TreemapInfoBar(viewModel: viewModel)
+                }
+            }
         } else {
             ContentUnavailableView(
                 "Ninguna carpeta escaneada",

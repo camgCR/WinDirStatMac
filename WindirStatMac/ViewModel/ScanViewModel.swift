@@ -81,4 +81,23 @@ final class ScanViewModel {
     func extensionName(for id: ExtensionID) async -> String? {
         await tree?.extensionName(for: id)
     }
+
+    func setZoomRoot(_ id: NodeID) {
+        zoomRootID = id
+        selectedNodeID = nil
+    }
+
+    /// The chain of directory names from the scan root down to the current zoom
+    /// root, for a breadcrumb control (`[(id, name)]`, root first).
+    func breadcrumbPath() async -> [(id: NodeID, name: String)] {
+        guard let zoomRootID else { return [] }
+        var chain: [(id: NodeID, name: String)] = []
+        var current: NodeID? = zoomRootID
+        while let id = current {
+            guard let node = await self.node(id) else { break }
+            chain.append((id, node.name))
+            current = node.parent
+        }
+        return chain.reversed()
+    }
 }
