@@ -91,6 +91,10 @@ private let spanishTranslations: [String: String] = [
     "groups": "grupos",
     "could free up": "podrías liberar",
     "Done": "Listo",
+    "Looking for same-size files…": "Buscando archivos del mismo tamaño…",
+    "Quick filter": "Filtro rápido",
+    "Confirming matches": "Confirmando coincidencias",
+    "files analyzed": "archivos analizados",
 ]
 
 @MainActor

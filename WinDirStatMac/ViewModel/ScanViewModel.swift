@@ -124,9 +124,19 @@ final class ScanViewModel {
         return CSVFormatter.format(rows: rows)
     }
 
-    func findDuplicates() async -> [DuplicateGroup] {
+    /// `onProgress` is polled at ~10Hz (not pushed per-file) while the scan
+    /// runs, same pattern as the initial directory scan's progress bar.
+    func findDuplicates(onProgress: @escaping (DuplicateScanProgress.Snapshot) -> Void) async -> [DuplicateGroup] {
         guard let tree else { return [] }
-        return await DuplicateFinder.findDuplicates(in: tree)
+        let progress = DuplicateScanProgress()
+        let pollTask = Task {
+            while !Task.isCancelled {
+                onProgress(await progress.snapshot())
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+        defer { pollTask.cancel() }
+        return await DuplicateFinder.findDuplicates(in: tree, progress: progress)
     }
 
     func search(query: String) async -> [SearchResult] {

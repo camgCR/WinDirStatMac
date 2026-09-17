@@ -8,6 +8,7 @@ struct DuplicateFinderView: View {
     @State private var groups: [DuplicateGroup] = []
     @State private var isScanning = true
     @State private var didScanOnce = false
+    @State private var progress = DuplicateScanProgress.Snapshot(phase: 1, processed: 0, total: 0)
 
     private var wastedBytes: Int64 {
         groups.reduce(0) { $0 + $1.size * Int64($1.nodeIDs.count - 1) }
@@ -20,10 +21,16 @@ struct DuplicateFinderView: View {
 
             if isScanning {
                 VStack(spacing: 12) {
-                    ProgressView()
-                    Text(loc("Hashing files to find duplicates…"))
+                    if progress.total > 0 {
+                        ProgressView(value: Double(progress.processed), total: Double(progress.total))
+                            .frame(width: 240)
+                    } else {
+                        ProgressView()
+                    }
+                    Text(progressText)
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                        .monospacedDigit()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if groups.isEmpty {
@@ -41,10 +48,18 @@ struct DuplicateFinderView: View {
         }
         .frame(width: 640, height: 480)
         .task {
-            groups = await viewModel.findDuplicates()
+            groups = await viewModel.findDuplicates { snapshot in
+                progress = snapshot
+            }
             isScanning = false
             didScanOnce = true
         }
+    }
+
+    private var progressText: String {
+        guard progress.total > 0 else { return loc("Looking for same-size files…") }
+        let phaseLabel = progress.phase == 1 ? loc("Quick filter") : loc("Confirming matches")
+        return "\(phaseLabel): \(progress.processed) / \(progress.total) \(loc("files analyzed"))"
     }
 
     private var header: some View {
@@ -59,7 +74,7 @@ struct DuplicateFinderView: View {
                 }
             }
             Spacer()
-            Button(loc("Done")) { dismiss() }
+            Button(isScanning ? loc("Cancel") : loc("Done")) { dismiss() }
         }
         .padding(12)
     }

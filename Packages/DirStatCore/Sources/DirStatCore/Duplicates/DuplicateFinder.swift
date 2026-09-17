@@ -11,21 +11,26 @@ import Foundation
 public enum DuplicateFinder {
     public static func findDuplicates(
         in tree: FileSystemTree,
-        maxConcurrency: Int = ProcessInfo.processInfo.activeProcessorCount
+        maxConcurrency: Int = ProcessInfo.processInfo.activeProcessorCount,
+        progress: DuplicateScanProgress? = nil
     ) async -> [DuplicateGroup] {
         let candidates = await tree.duplicateCandidates()
         guard !candidates.isEmpty else { return [] }
 
-        let partialGroups = await hashAndGroup(candidates, limit: maxConcurrency) {
+        await progress?.startPhase(1, total: candidates.count)
+        let partialGroups = await hashAndGroup(candidates, limit: maxConcurrency, progress: progress) {
             FileHasher.partialHash(path: $0.path)
         }
+        guard !Task.isCancelled else { return [] }
 
         let survivors = partialGroups.values.filter { $0.count >= 2 }.flatMap { $0 }
         guard !survivors.isEmpty else { return [] }
 
-        let fullGroups = await hashAndGroup(survivors, limit: maxConcurrency) {
+        await progress?.startPhase(2, total: survivors.count)
+        let fullGroups = await hashAndGroup(survivors, limit: maxConcurrency, progress: progress) {
             FileHasher.fullHash(path: $0.path)
         }
+        guard !Task.isCancelled else { return [] }
 
         return fullGroups.values
             .filter { $0.count >= 2 }
@@ -38,9 +43,13 @@ public enum DuplicateFinder {
     /// Hashes every candidate (bounded concurrency — `limit` files being read
     /// at once) and groups the results by `"<size>-<hash>"`. Candidates whose
     /// hash couldn't be computed (vanished, permission issue) are dropped.
+    /// Stops launching new work as soon as the calling task is cancelled —
+    /// e.g. the user dismissed the "Duplicate Files" sheet — rather than
+    /// grinding through every remaining candidate regardless.
     private static func hashAndGroup(
         _ candidates: [DuplicateCandidate],
         limit: Int,
+        progress: DuplicateScanProgress?,
         hash: @escaping @Sendable (DuplicateCandidate) -> String?
     ) async -> [String: [DuplicateCandidate]] {
         var groups: [String: [DuplicateCandidate]] = [:]
@@ -48,7 +57,7 @@ public enum DuplicateFinder {
             var iterator = candidates.makeIterator()
 
             func addNext() {
-                guard let candidate = iterator.next() else { return }
+                guard !Task.isCancelled, let candidate = iterator.next() else { return }
                 group.addTask { (candidate, hash(candidate)) }
             }
 
@@ -57,6 +66,7 @@ public enum DuplicateFinder {
                 if let hashValue {
                     groups["\(candidate.size)-\(hashValue)", default: []].append(candidate)
                 }
+                await progress?.increment()
                 addNext()
             }
         }
